@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<!--This is base template .-->
+<html>
+
+<head>
+    <title>{{ title }}</title> <!-- We have to pass value of title -->
+    
+    <link rel='stylesheet' type='text/css' href='/static/css/main.css'>
+    <!--Linking main.css file to base.html page-->
+
+    {% block head %}
+    <!--This pattern is used by other html pages to write here.-->
+    {% endblock %}
+</head>
+
+
+
+<body>
+
+    <div id='header'>
+        <h1>XYZ Bank</h1>
+        {% block header %}
+
+        {% endblock %}
+    </div>
+
+
+    <div id='left'>
+        <hr>
+        <!--Here I am inserting 2 images on left side.-->
+        <img src="static/image/bank1.jpg" alt="Bank Image" width="400" height="300 ">
+        <img src="static/image/bank2.jpg" alt="Bank Image" width="300" height="300 " >
+        {% block left %}
+
+        {% endblock %}
+    </div>
+
+    <div id='center'>
+        <hr>
+        {% block center %}
+
+        {% endblock %}
+    </div>
+
+
+    <div id='right'>
+        <hr>
+        <!--Here I am inserting 1 vedio on right side.-->
+        <video width="360" height="240" controls>
+        <source src="static/video/piggy.mp4" type="video/mp4">
+        Your broswer does not support the video tag.    
+        </video>
+        {% block right %}
+
+        {% endblock %}
+    </div>
+
+    <div id='footer'>
+
+        {% block footer %}
+
+        {% endblock %}
+        <h3>We love to Listen From you</h3>
+<h3>Contact Us at : </h3>
+<ul>
+    <li>Email: admin@xyz.com</li>
+    <li>Toll free Number : 1234567890</li>
+</ul>
+
+        
+        <h2> All Rights are reserved at &copy; XYZ Bank since 2008 </h2>
+
+    </div>
+
+    
+</body>
+
+
+</html>

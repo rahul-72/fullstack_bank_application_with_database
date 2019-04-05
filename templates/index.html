@@ -1,0 +1,34 @@
+{% extends "base.html" %}  
+<!-- I am importing the base template here.-->
+
+
+
+{% block center %}
+
+<!--It will show a message if we pass error variable--> 
+{% if error %}
+<h1 style="color:red"> {{error}} </h1>
+{% endif %}
+
+
+<!--I am creating form to take input for username and password-->
+<div id="login_form"> <!--Here id will be used in main.css file-->
+    <form action="/login/" method="POST">
+        <!--- After clicking the login buttom the flask will 
+        go the "/login/" route.-->
+        <p>Username: <input type="text" name="username" 
+        placeholder="eg rahul123" required> </p>
+        <p>Password: <input type="password" name="password"
+        placeholder="********" required> </p>
+        <p> Remember Me <input type="checkbox" ></p>
+        <p> <input type="submit" value="Login">
+        &nbsp; &nbsp; &nbsp; &nbsp;
+        <button >
+            <a href="/signup/" id="button"> Signup </a>
+            <!--- After clicking singup buttom flask will go to 
+            "/signup/" route.-->
+        </button>
+        </p>
+    </form>
+</div>
+{% endblock %}
