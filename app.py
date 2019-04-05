@@ -25,11 +25,11 @@ def db_connection():
 def execute_fetch(cmd):
     global data
     cursor.execute(cmd)
-    data=cursor.fetchall()
+    data=cursor.fetchone()
 
 def execute_insert(cmd):
     cursor.execute(cmd)
-    cursor.commit()
+    db.commit()
 
     
 
@@ -80,7 +80,7 @@ def login():
     db_connection()
     execute_fetch(cmd)
     if data:
-        if password== data[5]:
+        if password == data[5]:
             session['username']=username 
             """This is how we use session"""
             name=data[1] + ' ' +data[2]
@@ -110,6 +110,7 @@ def debit_amount():
 
     if data[3] > amount:
         msg= f'Amount Rs {amount} are debited from your account'
+        cmd1=""
         data[3] -=amount
         return render_template('login.html', title='Login',name=name, msg=msg)
     else:
@@ -220,7 +221,7 @@ def mk_signup():
                         cursor.execute(cmd1)
                         data1=cursor.fetchall()
                         if data1:  
-                             """checking whether a randomly generated account number is already
+                            """checking whether a randomly generated account number is already
                             in bank dictionary or not."""
                             continue                   
                         else:
@@ -231,8 +232,9 @@ def mk_signup():
                     if len(str(phone_number))==10:
                         
                         """cheaking whether phone number is of 10 digits or not."""
-                        
-                        
+                        cmd2=f"insert into bank values('{username}','{first_name}','{last_name}',0,'{a}','{password}','{email}','{phone_number}')"
+                        execute_insert(cmd2)
+                        db_close()
                         error = "Account Sucessfully Created Please Login"
                         return render_template("index.html",title="XYZ Bank",error=error)
                     else:
