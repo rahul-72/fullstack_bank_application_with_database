@@ -1,32 +1,47 @@
 from flask import Flask, render_template, request, session
 import json,time,os,sys,time     
 from random import randint    #importing useful libraries....
-
+import MySQLdb as sql
 """******************************************************************************"""
 
 """Creating app object and app.secret_key="toencryptyoursessiondata" is for session."""
 app=Flask(__name__)
 app.secret_key = "toencryptyoursessiondata"
+ 
 
 
-
-current_path=os.getcwd()  
-"""Always use current path so that this application 
-    can run on other laptops also."""
-
-bank_data=os.path.join(current_path,"static/data/bank")
-bank_log_data=os.path.join(current_path,"static/data/bank_log")
-"""Setting the path for the bank data and bank_log data."""
-
-
-"""The bank data of a particular user is in this form---->>>>>
-
-{"first_name": "rahul", "last_name":"charan", "balance": 35000,
- "account_number": "1001", "username":"rahul123", 
- "password": "rahul456", "email":"charan7rahul@gmail.com"}  """
 
 """ ************************************************************************************ """
+# creating functions for database
+db=None
+cursor=None
+data=None
+def db_connection():
+    global db,cursor
+    db=sql.connect(host='localhost', port=3306, user='root', password='', database='xyz')
+    cursor=db.cursor()
+    
 
+def execute_fetch(cmd):
+    global data
+    cursor.execute(cmd)
+    data=cursor.fetchall()
+
+def execute_insert(cmd):
+    cursor.execute(cmd)
+    cursor.commit()
+
+    
+
+def db_close():
+    global db,cursor,data
+    db.close()
+    cursor.close()
+    db=None
+    cursor=None
+    data=None
+
+"""*****************************************************************************"""
 
 """In flask, first of all this route will initiate."""
 @app.route('/')
@@ -34,21 +49,13 @@ def index():
     if 'username' in session:
         """If user exits then I am opening his file."""
         username=session['username']
-        file_name=os.path.join(bank_data, username)
-        f=open(file_name)
-        data=json.load(f)
-        f.close()
-        """loading and dumping his log file."""
-        f=open(os.path.join(bank_log_data,username))
-        log=json.load(f)
-        f.close()
-        log.append(time.ctime())
+        db_connection()
+        cmd=f"select * from bank where username='{username}'"
+        db_connection()
+        execute_fetch(cmd)
 
-        f=open(os.path.join(bank_log_data,username),'r+')
-        json.dump(log,f)
-        f.close()
 
-        name=data['first_name'] + ' '+data['last_name']
+        name=data[1] + ' '+data[2]
         name=name.title()
         return render_template("login.html", title="Login", name=name)
         """render_template will take login.html file from the template folder."""
@@ -68,31 +75,20 @@ def login():
     our database."""
     username=request.form["username"].strip().lower()
     password=request.form["password"]
-    for user in os.listdir(bank_data):
-        """By this for loop I will get a list which contains
-        name of files."""
-        if username==user:
-            f=open(os.path.join(bank_data,username))
-            data=json.load(f)
-            f.close()
-            if password== data['password']:
-                f=open(os.path.join(bank_log_data,username))
-                log=json.load(f)
-                f.close()
-                log.append(time.ctime())
 
-                f=open(os.path.join(bank_log_data,username),'r+')
-                json.dump(log,f)
-                f.close()
-                
-                session['username']=username 
-                """This is how we use session"""
-                name=data['first_name'] + ' ' +data['last_name']
-                name=name.title()
-                return render_template("login.html", title="Login", name=name, username=True)
-            else:
-                error="Invalid Password"
-                return render_template("index.html", title="XYZ Bank", error=error)
+    cmd=f"select * from bank where username='{username}'"
+    db_connection()
+    execute_fetch(cmd)
+    if data:
+        if password== data[5]:
+            session['username']=username 
+            """This is how we use session"""
+            name=data[1] + ' ' +data[2]
+            name=name.title()
+            return render_template("login.html", title="Login", name=name, username=True)
+        else:
+            error="Invalid Password"
+            return render_template("index.html", title="XYZ Bank", error=error)
     else:
         error="Username does not exits"
         return render_template("index.html", title="XYZ Bank", error=error)                      
@@ -109,17 +105,12 @@ def debit():
 def debit_amount():
     amount=request.form['amount']
     amount=int(amount)
-    username=session["username"]
-    f=open(os.path.join(bank_data,username))
-    data=json.load(f)
-    f.close()
-    name=data['first_name'] + ' '+data['last_name']
+    name=data[1] + ' '+data[2]
     name=name.title()
 
-    if data['balance'] > amount:
+    if data[3] > amount:
         msg= f'Amount Rs {amount} are debited from your account'
-        data['balance'] -=amount
-        json.dump(data, open(os.path.join(bank_data,username),'w'))
+        data[3] -=amount
         return render_template('login.html', title='Login',name=name, msg=msg)
     else:
         msg='You does not have sufficient amount.'
@@ -140,17 +131,10 @@ def credit():
 def credit_amount():
     amount=request.form['amount']
     amount=int(amount)
-    username=session["username"]
-    f=open(os.path.join(bank_data,username))
-    data=json.load(f)
-    f.close()
-    name=data['first_name'] + ' '+data['last_name']
+    name=data[1] + ' '+data[2]
     name=name.title()
 
-    data['balance']+=amount
-    f=open(os.path.join(bank_data,username),'w')
-    json.dump(data,f)
-    f.close()
+    data[3]+=amount
     msg=f'Amount Rs{amount} are credited to your account.'
     return render_template('login.html', title='Login',name=name, msg=msg)
 
@@ -162,13 +146,9 @@ def credit_amount():
 
 @app.route('/balance_account/')
 def balance_account():
-
-    username=session["username"]
-    f=open(os.path.join(bank_data,username))
-    data=json.load(f)
-    f.close()
-    balance=data['balance']
-    account_number=data['account_number']
+    
+    balance=data[3]
+    account_number=data[4]
     return render_template('balance_account.html', title='Balance_Account', balance=balance, account_number=account_number)
 
 
@@ -176,11 +156,7 @@ def balance_account():
 
 @app.route('/profile/')
 def profile():
-    username=session["username"]
-    f=open(os.path.join(bank_data,username))
-    data=json.load(f)
-    f.close()
-    name=data['first_name'] + ' '+data['last_name']
+    name=data[1] + ' '+data[2]
     name=name.title()
     
     return render_template('profile.html', title='Profile', data=data, name=name)
@@ -191,6 +167,7 @@ def profile():
 
 @app.route('/logout/')
 def logout():
+    db_close()
     session.clear()
     return render_template('index.html', title='XYZ Bank')
 
@@ -216,8 +193,12 @@ def mk_signup():
         username=request.form['username']
         phone_number=int(request.form['phone_number'])
         verify_password=request.form['verify_password']
+
+        cmd=f"select * from bank where username='{username}'"
+        db_connection()
+        execute_fetch(cmd)
         
-        if username not in bank_data : 
+        if not data: 
             """The bank data of a particular user is in this form---->>>>>
 
 {"first_name": "rahul", "last_name":"charan", "balance": 35000,
@@ -234,42 +215,24 @@ def mk_signup():
                         """Assigning 11 random number to update
                         account-number in dictionary."""
                         a=q+w+e+r+t+y+u+i+o+p+l
-                        for i in os.listdir(bank_data):
-                            f=open(os.path.join(bank_data,i))
-                            data=json.load(f)
-                            f.close()
-                            if data['account_number']==a:  
-                                """checking whether a randomly generated account number is already
-                                in bank dictionary or not."""
-                                break                   
-                            continue
+
+                        cmd1="select * from bank where account_number='{a}'"
+                        cursor.execute(cmd1)
+                        data1=cursor.fetchall()
+                        if data1:  
+                             """checking whether a randomly generated account number is already
+                            in bank dictionary or not."""
+                            continue                   
                         else:
                             break
 
 
 
                     if len(str(phone_number))==10:
+                        
                         """cheaking whether phone number is of 10 digits or not."""
-                        data = { 
-                            'email':email,
-                            'first_name':first_name,
-                            'last_name':last_name,
-                            'password':password,
-                            'username':username,
-                            'balance':0,
-                            'account_number':a,
-                            'phone_number':phone_number
-                        }
-                        """creating dictionary and dumping it ."""
-                        f=open(os.path.join(bank_data,username),'w')
-                        json.dump(data,f)
-                        f.close()
-
-                        log_list=[]
-                        f=open(os.path.join(bank_log_data,username),'w')
-                        json.dump(log_list,f)
-                        f.close()
-
+                        
+                        
                         error = "Account Sucessfully Created Please Login"
                         return render_template("index.html",title="XYZ Bank",error=error)
                     else:
@@ -285,6 +248,7 @@ def mk_signup():
                 return render_template('signup.html', title='Signup', error=error)
         else : 
             error = "User Already Exists... Login into your account"
+            db_close()
             return render_template("index.html",title="XYZ Bank",error=error)
 
     else : 
