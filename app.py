@@ -13,21 +13,37 @@ app.secret_key = "toencryptyoursessiondata"
 
 """ ************************************************************************************ """
 # creating functions for database
+#creating 3 global functions so that we can use them in functions like debit, credit etc.
 db=None
 cursor=None
 data=None
+"""After the execution of db_execute_fetch function the value of data will be:
+
+data= ('rahul123',
+ 'rahul',
+ 'charan',
+ 33000,
+ '11100011100',
+ 'rahul456',
+ 'charan7rahul@gmail.com',
+ 2147483647)  
+ 
+ means data will be in tuple form.
+ """
 def db_connection():
     global db,cursor
     db=sql.connect(host='localhost', port=3306, user='root', password='', database='xyz')
     cursor=db.cursor()
     
 
-def execute_fetch(cmd):
+def db_execute_fetch(cmd):     
+    """database ---->>>>> program"""
     global data
     cursor.execute(cmd)
     data=cursor.fetchone()
 
-def execute_insert(cmd):
+def db_execute_insert(cmd):       
+    """database <<<<<<<-------- program"""
     cursor.execute(cmd)
     db.commit()
 
@@ -35,8 +51,8 @@ def execute_insert(cmd):
 
 def db_close():
     global db,cursor,data
-    db.close()
     cursor.close()
+    db.close() 
     db=None
     cursor=None
     data=None
@@ -49,14 +65,15 @@ def index():
     if 'username' in session:
         """If user exits then I am opening his file."""
         username=session['username']
-        db_connection()
+
         cmd=f"select * from bank where username='{username}'"
         db_connection()
-        execute_fetch(cmd)
+        db_execute_fetch(cmd)
 
 
         name=data[1] + ' '+data[2]
         name=name.title()
+        db_close()
         return render_template("login.html", title="Login", name=name)
         """render_template will take login.html file from the template folder."""
 
@@ -78,13 +95,14 @@ def login():
 
     cmd=f"select * from bank where username='{username}'"
     db_connection()
-    execute_fetch(cmd)
+    db_execute_fetch(cmd)
     if data:
         if password == data[5]:
             session['username']=username 
             """This is how we use session"""
             name=data[1] + ' ' +data[2]
             name=name.title()
+            db_close()
             return render_template("login.html", title="Login", name=name, username=True)
         else:
             error="Invalid Password"
@@ -105,13 +123,23 @@ def debit():
 def debit_amount():
     amount=request.form['amount']
     amount=int(amount)
+
+    username=session['username']
+
+    cmd=f"select * from bank where username='{username}'"
+    db_connection()
+    db_execute_fetch(cmd)
+
     name=data[1] + ' '+data[2]
     name=name.title()
+    username=session['username']
 
     if data[3] > amount:
         msg= f'Amount Rs {amount} are debited from your account'
-        cmd1=""
-        data[3] -=amount
+        new_amount =data[3] -  amount
+        cmd1=f"update bank set balance='{new_amount}' where username='{username}' "
+        db_execute_insert(cmd1)
+        db_close()
         return render_template('login.html', title='Login',name=name, msg=msg)
     else:
         msg='You does not have sufficient amount.'
@@ -132,10 +160,18 @@ def credit():
 def credit_amount():
     amount=request.form['amount']
     amount=int(amount)
+
+    username=session['username']
+
+    cmd=f"select * from bank where username='{username}'"
+    db_connection()
+    db_execute_fetch(cmd)
     name=data[1] + ' '+data[2]
     name=name.title()
-
-    data[3]+=amount
+    new_amount=data[3]+amount
+    cmd1=f"update bank set balance='{new_amount}' where username='{username}' "
+    db_execute_insert(cmd1)
+    db_close()
     msg=f'Amount Rs{amount} are credited to your account.'
     return render_template('login.html', title='Login',name=name, msg=msg)
 
@@ -147,9 +183,15 @@ def credit_amount():
 
 @app.route('/balance_account/')
 def balance_account():
-    
+
+    username=session['username']
+
+    cmd=f"select * from bank where username='{username}'"
+    db_connection()
+    db_execute_fetch(cmd)
     balance=data[3]
     account_number=data[4]
+    db_close()
     return render_template('balance_account.html', title='Balance_Account', balance=balance, account_number=account_number)
 
 
@@ -157,10 +199,17 @@ def balance_account():
 
 @app.route('/profile/')
 def profile():
+
+    username=session['username']
+
+    cmd=f"select * from bank where username='{username}'"
+    db_connection()
+    db_execute_fetch(cmd)
     name=data[1] + ' '+data[2]
     name=name.title()
-    
-    return render_template('profile.html', title='Profile', data=data, name=name)
+    data_send=data
+    db_close()
+    return render_template('profile.html', title='Profile', data=data_send, name=name)
 
 
 """***********************************************************************************""" 
@@ -168,7 +217,6 @@ def profile():
 
 @app.route('/logout/')
 def logout():
-    db_close()
     session.clear()
     return render_template('index.html', title='XYZ Bank')
 
@@ -197,7 +245,7 @@ def mk_signup():
 
         cmd=f"select * from bank where username='{username}'"
         db_connection()
-        execute_fetch(cmd)
+        db_execute_fetch(cmd)
         
         if not data: 
             """The bank data of a particular user is in this form---->>>>>
@@ -218,6 +266,7 @@ def mk_signup():
                         a=q+w+e+r+t+y+u+i+o+p+l
 
                         cmd1="select * from bank where account_number='{a}'"
+                        #Here I am not database' functions which I created above.
                         cursor.execute(cmd1)
                         data1=cursor.fetchall()
                         if data1:  
@@ -233,7 +282,7 @@ def mk_signup():
                         
                         """cheaking whether phone number is of 10 digits or not."""
                         cmd2=f"insert into bank values('{username}','{first_name}','{last_name}',0,'{a}','{password}','{email}','{phone_number}')"
-                        execute_insert(cmd2)
+                        db_execute_insert(cmd2)
                         db_close()
                         error = "Account Sucessfully Created Please Login"
                         return render_template("index.html",title="XYZ Bank",error=error)
