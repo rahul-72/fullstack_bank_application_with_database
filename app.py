@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, session
 import json,time,os,sys,time     
 from random import randint    #importing useful libraries....
 import MySQLdb as sql
-"""******************************************************************************"""
+"""***********************************************************************************"""
 
 """Creating app object and app.secret_key="toencryptyoursessiondata" is for session."""
 app=Flask(__name__)
@@ -74,6 +74,8 @@ def index():
         name=data[1] + ' '+data[2]
         name=name.title()
         db_close()
+        """making connection with database and closing them in the same function like here.
+        and all the functions below is neccesory otherwise databse will not updated and we will get error."""
         return render_template("login.html", title="Login", name=name)
         """render_template will take login.html file from the template folder."""
 
